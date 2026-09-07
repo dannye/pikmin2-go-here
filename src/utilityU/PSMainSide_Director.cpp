@@ -1,4 +1,5 @@
 #include "PSSystem/SeqTrack.h"
+#include "PSMath.h"
 #include "PSM/ObjCalc.h"
 #include "PSM/Otakara.h"
 #include "PSGame/Global.h"
@@ -43,6 +44,18 @@ void DamageDirector::execInner()
 }
 
 /**
+ * @note Address: N/A
+ * @note Size: 0x7C
+ */
+TempoChangeDirectorBase::TempoChangeDirectorBase(const char* name, f32 tempo, s32 duration)
+    : SwitcherDirector(1, name)
+    , mTempoValue(tempo)
+    , mTimeBase(duration)
+    , mActor(nullptr)
+{
+}
+
+/**
  * @note Address: 0x80456CE8
  * @note Size: 0x30
  */
@@ -65,6 +78,7 @@ void TempoChangeDirectorBase::directOffTrack(PSSystem::SeqTrackBase& seqTrack)
  * @note Size: 0x84
  */
 ActorDirector_TempoChange::ActorDirector_TempoChange()
+    : TempoChangeDirectorBase("lifeD    ", 0.7f, 100)
 {
 }
 
@@ -241,6 +255,18 @@ void TrackOnDirector_Voting::execInner()
 	mVoteState = 0;
 }
 
+TrackOnDirector_Scaled::TrackOnDirector_Scaled(const char* name, int trackCount, f32 endDistance, f32 startDistance, s32 fadeIn,
+                                               s32 fadeOut, u32 fadeDuration)
+    : TrackOnDirectorBase(trackCount, name, fadeIn, fadeOut)
+    , mEndDistance(endDistance)
+    , mStartDistance(startDistance)
+    , mCurrDistance(100000.0f)
+    , mFadeDuration(fadeDuration)
+{
+	mEnableType = 1;
+	mActor      = nullptr;
+}
+
 /**
  * @note Address: 0x804574FC
  * @note Size: 0xFC
@@ -318,7 +344,7 @@ void ActorDirector_Scaled::execInner()
 f32 ActorDirector_Scaled::getNearestDistance()
 {
 	bool is1P   = PSSystem::SingletonBase<PSM::ObjCalcBase>::getInstance()->is1PGame();
-	f32 minDist = 100000.0f;
+	f32 minDist = 1000000.0f;
 	if (!is1P) {
 		Game::Navi* olimar = Game::naviMgr->getAt(NAVIID_Olimar);
 		Game::Navi* louie  = Game::naviMgr->getAt(NAVIID_Louie);
@@ -327,20 +353,20 @@ f32 ActorDirector_Scaled::getNearestDistance()
 		Vector3f oPos = olimar->getPosition();
 		Vector3f lPos = louie->getPosition();
 
-		FOREACH_NODE(JSULink<Game::Creature>, mActor->getFirst(), link)
+		JSUList<Game::Creature>* actors = mActor;
+		FOREACH_NODE(JSULink<Game::Creature>, actors->getFirst(), link)
 		{
-			Game::Creature* obj = link->getObject();
-			Vector3f objpos     = obj->getPosition();
-			f32 p1Dist          = oPos.distance(objpos);
-			f32 p2Dist          = lPos.distance(objpos);
+			Vector3f objpos = link->getObject()->getPosition();
+			f32 p1Dist      = PSMath::calcDistance(oPos, objpos);
+			f32 p2Dist      = PSMath::calcDistance(lPos, objpos);
 			if (p1Dist <= p2Dist) {
 				if (p1Dist < minDist) {
-					onSetMinDistObj(obj);
 					minDist = p1Dist;
+					onSetMinDistObj(link->getObject());
 				}
 			} else if (p2Dist < minDist) {
-				onSetMinDistObj(obj);
 				minDist = p2Dist;
+				onSetMinDistObj(link->getObject());
 			}
 		}
 
@@ -357,15 +383,15 @@ f32 ActorDirector_Scaled::getNearestDistance()
 
 		FOREACH_NODE(JSULink<Game::Creature>, mActor->getFirst(), link)
 		{
-			Game::Creature* obj = link->getObject();
-			Vector3f objpos     = obj->getPosition();
-			f32 dist            = naviPos.distance(objpos);
+			Vector3f objpos = link->getObject()->getPosition();
+			f32 dist        = PSMath::calcDistance(naviPos, objpos);
 			if (dist < minDist) {
 				minDist = dist;
-				onSetMinDistObj(obj);
+				onSetMinDistObj(link->getObject());
 			}
 		}
 	}
+	return minDist;
 	/*
 	stwu     r1, -0x1d0(r1)
 	mflr     r0
@@ -974,7 +1000,7 @@ void DirectorUpdator::frameEndWork()
  */
 PSSystem::DirectorBase* PSMGetBattleDirector(u8 directorID)
 {
-	PSM::MiddleBossSeq* seq = PSMGetMiddleBossSeq();
+	PSM::MiddleBossSeq* seq = PSMGetMiddleBossSeq(PSMGetSceneMgrCheck());
 	if (!seq) {
 		return nullptr;
 	}
