@@ -77,7 +77,7 @@ struct Scene_Global : public SceneBase {
 	virtual bool getSeSceneGate(ObjBase*, u32)
 	{
 		// this needs to go in PSMainSide_Scene.h
-		JUT_PANICLINE(63, "P2Assert");
+		JUTException::panic_f("PSMainSide_Scene.h", 63, "P2Assert");
 		return false;
 	} // _38 (weak)
 
@@ -343,11 +343,16 @@ inline PSM::Scene_Game* PSMGetGameScene()
 	return nullptr;
 }
 
-inline PSM::MiddleBossSeq* PSMGetMiddleBossSeq()
+inline PSM::MiddleBossSeq* PSMGetMiddleBossSeq(PSSystem::SceneMgr* sceneMgr)
 {
-	PSGame::PikSceneMgr* mgr = PSMGetPikSceneMgrCheck();
+	PSGame::PikSceneMgr* mgr = static_cast<PSGame::PikSceneMgr*>(sceneMgr);
 	PSGame::PikScene* scene  = mgr->getChildPikScene();
 	return !scene ? nullptr : scene->getMiddleBossBgm();
+}
+
+inline PSM::MiddleBossSeq* PSMGetMiddleBossSeq()
+{
+	return PSMGetMiddleBossSeq(PSMGetPikSceneMgrCheck());
 }
 
 inline bool PSMCheckSceneIsDemo()

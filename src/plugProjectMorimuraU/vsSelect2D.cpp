@@ -865,7 +865,8 @@ void TVsSelect::doCreate(JKRArchive* arc)
 	sys->heapStatusStart("vsSelectTexture", nullptr);
 	mVsSelectTextureArc = nullptr;
 	char path[50];
-	og::newScreen::makeLanguageResName(path, "res_vsSelectTexture.szs");
+	const char* textureArchiveName = "res_vsSelectTexture.szs";
+	og::newScreen::makeLanguageResName(path, textureArchiveName);
 	mVsSelectTextureArc = JKRMountArchive(path, JKRArchive::EMM_Mem, nullptr, JKRArchive::EMD_Head);
 	JUT_ASSERTLINE(893, mVsSelectTextureArc, "arcName = %s\n", path);
 	sys->heapStatusEnd("vsSelectTexture");
@@ -1011,7 +1012,7 @@ void TVsSelect::doCreate(JKRArchive* arc)
 	}
 
 	og::Screen::setCallBack_CounterRV(screen, 'Prp_f_r', 'Prp_f_l', 'Prp_f_l', &mDispPikiNum[0], 2, 0, 1, mArchive);
-	og::Screen::setCallBack_CounterRV(screen, 'Prp_f_r1', 'Prp_f_l1', 'Prp_f_l1', &mDispPikiNum[0], 2, 0, 1, mArchive);
+	og::Screen::setCallBack_CounterRV(screen, 'Prp_f_r1', 'Prp_f_l1', 'Prp_f_l1', &mDispPikiNum[1], 2, 0, 1, mArchive);
 
 	mWinCounter[0] = new TVsSelectCBWinNum(const_cast<char**>(og::Screen::SujiTex32), 4, mArchive);
 	mWinCounter[0]->init(screen, 'Pori_r', 'Pori_l', 'Pori_c', &mPlayerWinCounts[0], true);
@@ -1135,7 +1136,7 @@ void TVsSelect::doCreate(JKRArchive* arc)
 	mMaxSelYOffset = icon->mOffset.y;
 	mIndexPaneList = new TIndexPane*[mNumActiveRows];
 	for (int i = 0; i < mNumActiveRows; i++) {
-		mIndexPaneList[i] = new TIndexPane(this, screen, stageTags[i]);
+		mIndexPaneList[i] = new TIndexPane(nullptr, screen, stageTags[i]);
 		mIndexPaneList[i]->mPane->setMsgID('0000_01');
 		mIndexPaneList[i]->setIndex(i);
 		mIndexPaneList[i]->mPane->show();
@@ -3915,15 +3916,15 @@ bool TVsSelect::doUpdate()
 					}
 					PSSystem::spSysIF->playSystemSe(PSSE_SY_MENU_DECIDE, 0);
 					mRulesWindow->closeWindow();
-				} else if (mController->getButton() & (Controller::ANALOG_DOWN)
-				           || mController->getButton() & (Controller::PRESS_DPAD_DOWN)) {
+				} else if (mController->getButton() & (Controller::ANALOG_UP) || mController->getButton() & (Controller::PRESS_DPAD_UP)) {
 					if (mStickAnimState != 1) {
 						mIndexGroup->upIndex();
 					} else if (mIndexGroup->mStateID == TIndexGroup::IDGroup_Idle && !mIsSelectIndexChange) {
 						mIsSelectIndexChange = true;
 						PSSystem::spSysIF->playSystemSe(PSSE_SY_MENU_ERROR, 0);
 					}
-				} else if (mController->getButton() & (Controller::ANALOG_UP) || mController->getButton() & (Controller::PRESS_DPAD_UP)) {
+				} else if (mController->getButton() & (Controller::ANALOG_DOWN)
+				           || mController->getButton() & (Controller::PRESS_DPAD_DOWN)) {
 					if (mStickAnimState != 2) {
 						mIndexGroup->downIndex();
 					} else if (mIndexGroup->mStateID == TIndexGroup::IDGroup_Idle && !mIsSelectIndexChange) {
@@ -3942,8 +3943,8 @@ bool TVsSelect::doUpdate()
 			for (int i = 0; i < 2; i++) {
 				TVsSelectOnyon* onyon = mOnyonObj[i];
 				f32 calc              = onyon->mGoalAngle;
-				onyon->mCurrentPosition
-				    = Vector2f(cosf(calc) * 400.0f + onyon->mGoalPosition.x, sinf(calc) * 400.0f + onyon->mGoalPosition.y);
+				onyon->mGoalPosition
+				    = Vector2f(cosf(calc) * 400.0f + onyon->mCurrentPosition.x, sinf(calc) * 400.0f + onyon->mCurrentPosition.y);
 			}
 		}
 	}
@@ -4048,16 +4049,13 @@ bool TVsSelect::doUpdate()
 	mListScreen->mScreenObj->scaleScreen(mDemoScale);
 	mFireScreen->mScreenObj->scaleScreen(mDemoScale);
 
-	f32 calc = mScreenXPos / mDemoScale;
-	mPaneSpot->updateScale(mScreenXPos);
-	f32 something = 243.0f;
-	something *= 40.0f;
-	something += 324.0f;
-	something *= 1.1f;
-	mPaneSpot->updateScale(-calc * something);
+	mPaneSpot->updateScale(1.0f / mDemoScale);
+	f32 x = 1.1f * (-mScreenXPos / mDemoScale) + 324.0f;
+	f32 y = 243.0f - 40.0f * (1.0f - 1.0f / mDemoScale);
+	mPaneSpot->setOffset(x, y);
 
 	f32 dist = 0.0f;
-	if (mIndexGroup->mStateID != TIndexGroup::IDGroup_Down) {
+	if (mIndexGroup->mStateID == TIndexGroup::IDGroup_Down) {
 		dist = 30.0f;
 	} else if (mIndexGroup->mStateID == TIndexGroup::IDGroup_Up) {
 		dist = -30.0f;
@@ -5575,8 +5573,8 @@ void TVsSelect::doDraw(Graphics& gfx)
 				mIsOnyonHitGoal       = true;
 				TVsSelectOnyon* onyon = mOnyonObj[i];
 				f32 scale             = onyon->_30 * 25.0f;
-				f32 y                 = mOnyonGoalOffset.y + (onyon->mCurrentPosition.y - _294) / (_29C / _294);
-				f32 x                 = mOnyonGoalOffset.x + (onyon->mCurrentPosition.x - _290) / (_298 / _290);
+				f32 y                 = 240.0f * ((mOnyonGoalOffset.y + (onyon->mCurrentPosition.y - _294)) / (_29C - _294));
+				f32 x                 = (mOnyonGoalOffset.x + (onyon->mCurrentPosition.x - _290)) / (_298 - _290);
 				pics[i].setBasePosition(J2DPOS_Center);
 				pics[i].draw((x * 336.0f) - (scale * 0.5f), (y) - (scale * 0.5f), scale, scale, false, false, false);
 			}
@@ -5677,8 +5675,8 @@ void TVsSelect::doDraw(Graphics& gfx)
 			J2DPictureEx* pane = (J2DPictureEx*)mPowerIconPanes[baseID + i];
 			f32 width          = pane->getWidth();
 			f32 height         = pane->getHeight();
-			pane->draw(mPowerIconOffset.x + (width / 2 - mPaneRulesIcons[i]->mGlobalMtx[0][3]),
-			           mPowerIconOffset.y + (height / 2 - mPaneRulesIcons[i]->mGlobalMtx[1][3]), width, height, false, false, false);
+			pane->draw(mPowerIconOffset.x + (mPaneRulesIcons[i]->mGlobalMtx[0][3] - width / 2),
+			           mPowerIconOffset.y + (mPaneRulesIcons[i]->mGlobalMtx[1][3] - height / 2), width, height, false, false, false);
 			mPowerIconPanes[baseID + i]->calcMtx();
 		}
 		gfx.mPerspGraph.setPort();
@@ -6798,7 +6796,7 @@ void TVsSelect::doZoom()
 	f32 calc  = sinf(mZoomLevel * HALF_PI / mZoomFrameMax);
 	f32 scale = 0.0f;
 	f32 temp;
-	if (calc < 0.25f) {
+	if (calc >= 0.25f) {
 		temp  = 1.0f;
 		scale = (calc - 0.25f) * 4.0f / 3.0f;
 		if (calc == 1.0f) {
