@@ -273,7 +273,7 @@ bool CPlate::validSlot(int index)
  */
 int getPriority(int* pikiCounts, int color)
 {
-	for (int i = 0; i < Game::PikiColorCount; i++) {
+	for (int i = 0; i < Game::PikiColorCount + 1; i++) {
 		if (color == pikiCounts[i]) {
 			return i;
 		}
@@ -294,9 +294,13 @@ void CPlate::sortByColor(Creature* piki, int happaType)
 	int kind  = static_cast<Piki*>(piki)->getKind();
 	int happa = static_cast<Piki*>(piki)->getHappa();
 
-	int pikiCounts[PikiColorCount];
-	for (int i = 0; i < PikiColorCount; i++) {
-		pikiCounts[i] = (kind + i) % PikiColorCount;
+	if (static_cast<Piki*>(piki)->mBomb) {
+		kind = BombPikmin;
+	}
+
+	int pikiCounts[PikiColorCount + 1];
+	for (int i = 0; i < PikiColorCount + 1; i++) {
+		pikiCounts[i] = (kind + i) % (PikiColorCount + 1);
 	}
 
 	int happaSlots[PikiGrowthStageCount];
@@ -312,6 +316,13 @@ void CPlate::sortByColor(Creature* piki, int happaType)
 			Piki* jPiki = static_cast<Piki*>(mSlots[j].mCreature);
 			int iKind   = iPiki->getKind();
 			int jKind   = jPiki->getKind();
+
+			if (iPiki->mBomb) {
+				iKind = BombPikmin;
+			}
+			if (jPiki->mBomb) {
+				jKind = BombPikmin;
+			}
 
 			if (iKind != jKind) {
 				int iPrio = getPriority(pikiCounts, iKind);
