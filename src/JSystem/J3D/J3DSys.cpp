@@ -13,7 +13,7 @@ J3DTexCoordScaleInfo J3DSys::sTexCoordScaleTable[8];
 static GXColor ColorBlack = { 0x00, 0x00, 0x00, 0x00 };
 static GXColor ColorWhite = { 0xFF, 0xFF, 0xFF, 0xFF };
 
-static u8 NullTexData[0x10] = { 0x0 };
+static u8 NullTexData[0x10] ATTRIBUTE_ALIGN(32) = { 0x0 };
 
 s32 j3dDefaultViewNo;
 
